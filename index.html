@@ -96,20 +96,23 @@
     function showQuestion() {
         const q = quizData[currentIdx];
         
-        // 1. Heading check
+        // 1. Heading (e.g., "The Pricing of Debt")
         const titleEl = document.getElementById('topic-title');
-        const headingText = q.heading || q.title || q.topic || "";
+        const headingText = q.heading || q.title || q.question || "";
         titleEl.innerText = headingText;
         titleEl.style.display = headingText ? 'block' : 'none';
 
-        // 2. Reading Material check
+        // 2. Reading Material / Topic Intro (The Gray Box)
         const contentBox = document.getElementById('content-box');
-        const boxData = q.content || q.description || "";
+        const boxData = q.content || "";
         contentBox.innerText = boxData;
         contentBox.style.display = boxData ? 'block' : 'none';
 
-        // 3. Question check
-        document.getElementById('question-text').innerText = q.question || "";
+        // 3. The Specific Question Scenario (The text below the gray box)
+        const questionTextEl = document.getElementById('question-text');
+        const scenarioData = q.description || "";
+        questionTextEl.innerText = scenarioData;
+        questionTextEl.style.display = scenarioData ? 'block' : 'none';
         
         const bin = document.getElementById('options-bin');
         bin.innerHTML = '';
