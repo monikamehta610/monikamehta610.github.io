@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Portal</title>
-    <!-- Inter Font for that premium look -->
+    <!-- Inter Font for a premium look -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -16,6 +16,8 @@
             --border-color: #e2e8f0;
             --gray-box-bg: #f1f5f9;
             --gray-box-border: #cbd5e1;
+            --success-green: #22c55e;
+            --error-red: #ef4444;
         }
 
         * { box-sizing: border-box; }
@@ -43,19 +45,17 @@
             border-radius: 16px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
             width: 100%;
+            transition: all 0.3s ease;
         }
 
-        /* Title: Topic Name */
         #topic-title {
             font-size: 1.75rem;
             font-weight: 800;
             margin-bottom: 1.25rem;
             color: #0f172a;
             line-height: 1.2;
-            display: none;
         }
 
-        /* Content: Information/Lecture (Gray Box) */
         #content-box {
             background: var(--gray-box-bg);
             padding: 1.5rem;
@@ -65,28 +65,22 @@
             line-height: 1.7;
             font-style: italic;
             color: var(--text-muted);
-            display: none;
         }
 
-        /* Description: The Scenario/Case Study Text */
         #description-text {
             font-size: 1rem;
             line-height: 1.6;
             color: var(--text-muted);
             margin-bottom: 1.5rem;
-            display: none;
         }
 
-        /* Question: The Bold Question Heading above options */
         #question-text {
             font-size: 1.25rem;
             font-weight: 700;
             margin-bottom: 1.5rem;
             color: var(--text-main);
-            display: none;
         }
 
-        /* UI Elements */
         input[type="text"] {
             width: 100%;
             padding: 14px;
@@ -95,7 +89,9 @@
             border-radius: 10px;
             font-size: 1rem;
             outline: none;
+            transition: border-color 0.2s;
         }
+        input[type="text"]:focus { border-color: var(--accent-blue); }
 
         .btn-primary {
             width: 100%;
@@ -107,7 +103,9 @@
             font-weight: 700;
             font-size: 1rem;
             cursor: pointer;
+            transition: opacity 0.2s;
         }
+        .btn-primary:hover { opacity: 0.9; }
 
         .option-btn {
             display: block;
@@ -129,8 +127,8 @@
             background: #f8fafc;
         }
 
-        .correct { background: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; }
-        .wrong { background: #fef2f2 !important; border-color: #ef4444 !important; color: #991b1b !important; }
+        .correct { background: #f0fdf4 !important; border-color: var(--success-green) !important; color: #166534 !important; }
+        .wrong { background: #fef2f2 !important; border-color: var(--error-red) !important; color: #991b1b !important; }
 
         #explanation {
             margin-top: 2rem;
@@ -154,29 +152,53 @@
             cursor: pointer;
         }
 
-        .hidden { display: none; }
+        .hidden { display: none !important; }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+        }
+
+        #completion-screen {
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
 <div id="app-container">
+    <!-- Setup Screen -->
     <div id="setup-container" class="card">
         <h2 style="margin-top: 0;">Start Module</h2>
-        <input type="text" id="quiz-url" placeholder="Paste JSON URL...">
+        <p style="color: var(--text-muted); margin-bottom: 20px;">Enter the JSON URL for your quiz module (e.g., .../001.json)</p>
+        <input type="text" id="quiz-url" placeholder="https://.../quiz_001.json">
         <button class="btn-primary" onclick="initializeQuiz()">Load Quiz</button>
     </div>
 
+    <!-- Quiz Content -->
     <div id="quiz-container" class="card hidden">
-        <div id="topic-title"></div>
-        <div id="content-box"></div>
-        <div id="description-text"></div>
-        <div id="question-text"></div>
-        
-        <div id="options-bin"></div>
-        <div id="explanation"></div>
-        
-        <div style="margin-top: 20px; overflow: hidden;">
-            <button id="next-btn" class="hidden" onclick="handleNextClick()">Next Question →</button>
+        <div id="quiz-flow">
+            <div id="topic-title"></div>
+            <div id="content-box"></div>
+            <div id="description-text"></div>
+            <div id="question-text"></div>
+            
+            <div id="options-bin"></div>
+            <div id="explanation"></div>
+            
+            <div style="margin-top: 20px; overflow: hidden;">
+                <button id="next-btn" class="hidden" onclick="handleNextClick()">Next Question →</button>
+            </div>
+        </div>
+
+        <!-- Completion/Transition Screen -->
+        <div id="completion-screen" class="hidden">
+            <h2 id="completion-title">Module Complete!</h2>
+            <p id="completion-msg" style="color: var(--text-muted); margin-bottom: 24px;">Great job finishing this section.</p>
+            <div id="transition-actions">
+                <!-- Dynamic buttons added here -->
+            </div>
         </div>
     </div>
 </div>
@@ -196,16 +218,36 @@
     async function initializeQuiz(providedUrl) {
         const inputUrl = providedUrl || document.getElementById('quiz-url').value.trim();
         if (!inputUrl) return;
+
         currentUrl = formatGithubUrl(inputUrl);
+        
+        // Show loading state
+        const setupContainer = document.getElementById('setup-container');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizFlow = document.getElementById('quiz-flow');
+        const completionScreen = document.getElementById('completion-screen');
+
+        setupContainer.classList.add('hidden');
+        quizContainer.classList.remove('hidden');
+        quizFlow.classList.add('hidden');
+        completionScreen.classList.add('hidden');
+
         try {
             const response = await fetch(currentUrl);
+            if (!response.ok) throw new Error("File not found");
+            
             const data = await response.json();
             quizData = Array.isArray(data) ? data : [data];
             currentIdx = 0;
-            document.getElementById('setup-container').classList.add('hidden');
-            document.getElementById('quiz-container').classList.remove('hidden');
+
+            quizFlow.classList.remove('hidden');
             showQuestion();
-        } catch (err) { alert("Error loading quiz."); }
+        } catch (err) { 
+            console.error(err);
+            setupContainer.classList.remove('hidden');
+            quizContainer.classList.add('hidden');
+            alert("Error loading quiz: " + err.message); 
+        }
     }
 
     function showQuestion() {
@@ -234,6 +276,7 @@
 
         const bin = document.getElementById('options-bin');
         bin.innerHTML = '';
+        
         document.getElementById('explanation').style.display = 'none';
         document.getElementById('next-btn').classList.add('hidden');
 
@@ -247,14 +290,18 @@
     }
 
     function checkAnswer(btn, selected, correct, info) {
-        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-        if (selected === correct) btn.classList.add('correct');
-        else {
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.disabled = true);
+        
+        if (selected === correct) {
+            btn.classList.add('correct');
+        } else {
             btn.classList.add('wrong');
-            document.querySelectorAll('.option-btn').forEach(b => {
+            buttons.forEach(b => {
                 if (b.innerText === correct) b.classList.add('correct');
             });
         }
+
         const expBox = document.getElementById('explanation');
         expBox.innerHTML = `<strong>Explanation</strong><p>${info}</p>`;
         expBox.style.display = 'block';
@@ -263,20 +310,50 @@
 
     function handleNextClick() {
         currentIdx++;
-        if (currentIdx < quizData.length) showQuestion();
-        else offerNextModule();
+        if (currentIdx < quizData.length) {
+            showQuestion();
+        } else {
+            offerNextModule();
+        }
     }
 
     async function offerNextModule() {
-        const nextUrl = currentUrl.replace(/(\d+)(?=\.json)/, (m) => (parseInt(m)+1).toString().padStart(m.length, '0'));
-        let nextExists = false;
-        try { const res = await fetch(nextUrl, { method: 'HEAD' }); if (res.ok) nextExists = true; } catch (e) {}
+        // Find the number in the filename and increment it
+        // Matches sequences like 001, 01, 1 etc before .json
+        const nextUrl = currentUrl.replace(/(\d+)(?=\.json)/, (m) => {
+            const nextNum = parseInt(m) + 1;
+            return nextNum.toString().padStart(m.length, '0');
+        });
 
-        const container = document.getElementById('quiz-container');
+        document.getElementById('quiz-flow').classList.add('hidden');
+        const screen = document.getElementById('completion-screen');
+        const actionBox = document.getElementById('transition-actions');
+        screen.classList.remove('hidden');
+        actionBox.innerHTML = '<p class="loading-spinner">Checking for next module...</p>';
+
+        let nextExists = false;
+        try { 
+            // We use standard fetch but check only the status to avoid CORS issues with HEAD
+            const res = await fetch(nextUrl); 
+            if (res.ok) nextExists = true; 
+        } catch (e) {
+            console.log("Next module not found or network error.");
+        }
+
         if (nextExists) {
-            container.innerHTML = `<div style='text-align:center;'><h2>Complete!</h2><button class="btn-primary" onclick="initializeQuiz('${nextUrl}')">Next Module →</button></div>`;
+            actionBox.innerHTML = `
+                <button class="btn-primary" onclick="initializeQuiz('${nextUrl}')">
+                    Start Next Module →
+                </button>
+            `;
         } else {
-            container.innerHTML = `<div style='text-align:center;'><h2>Finished!</h2><button class="btn-primary" onclick="location.reload()">Finish</button></div>`;
+            document.getElementById('completion-title').innerText = "All Modules Finished!";
+            document.getElementById('completion-msg').innerText = "You have completed the entire series.";
+            actionBox.innerHTML = `
+                <button class="btn-primary" onclick="location.reload()">
+                    Return to Start
+                </button>
+            `;
         }
     }
 </script>
