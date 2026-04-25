@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic GitHub Quiz</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+        #setup-container, #quiz-container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 600px; width: 100%; }
+        input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; }
+        button { cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.2s; }
+        #start-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 12px; }
+        .option-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; background: #fff; text-align: left; }
+        .option-btn:hover { background: #f8fafc; border-color: #2563eb; }
+        .correct { background: #dcfce7 !important; border-color: #22c55e !important; color: #166534; }
+        .wrong { background: #fee2e2 !important; border-color: #ef4444 !important; color: #991b1b; }
+        #explanation { margin-top: 20px; padding: 15px; background: #eff6ff; border-left: 4px solid #2563eb; display: none; }
+        #next-btn { margin-top: 20px; background: #1e293b; color: white; border: none; padding: 10px 20px; float: right; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="setup-container">
+    <h2>Enter Quiz URL</h2>
+    <p style="font-size: 0.9em; color: #666;">Paste the <strong>Raw</strong> GitHub URL of your JSON file:</p>
+    <input type="text" id="quiz-url" placeholder="https://raw.githubusercontent.com/.../quiz.json">
+    <button id="start-btn" onclick="initializeQuiz()">Start Quiz</button>
+    <p id="error-msg" style="color: red; display: none; margin-top: 10px;">Failed to load data. Check the URL and JSON format.</p>
+</div>
+
+<div id="quiz-container" class="hidden">
+    <h3 id="question"></h3>
+    <div id="options-bin"></div>
+    <div id="explanation"></div>
+    <button id="next-btn" class="hidden" onclick="nextQuestion()">Next Question →</button>
+    <div style="clear: both;"></div>
+</div>
+
+<script>
+    let quizData = [];
+    let currentIdx = 0;
+
+    async function initializeQuiz() {
+        const url = document.getElementById('quiz-url').value;
+        const errorMsg = document.getElementById('error-msg');
+        
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error();
+            quizData = await response.json();
+            
+            // Hide setup, show quiz
+            document.getElementById('setup-container').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+            showQuestion();
+        } catch (err) {
+            errorMsg.style.display = 'block';
+        }
+    }
+
+    function showQuestion() {
+        const q = quizData[currentIdx];
+        document.getElementById('question').innerText = q.question;
+        const bin = document.getElementById('options-bin');
+        bin.innerHTML = '';
+        document.getElementById('explanation').style.display = 'none';
+        document.getElementById('next-btn').classList.add('hidden');
+
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            btn.className = 'option-btn';
+            btn.onclick = () => checkAnswer(btn, opt, q.answer, q.explanation);
+            bin.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(btn, selected, correct, info) {
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.disabled = true);
+
+        if (selected === correct) {
+            btn.classList.add('correct');
+        } else {
+            btn.classList.add('wrong');
+            buttons.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+        }
+
+        const expBox = document.getElementById('explanation');
+        expBox.innerHTML = `<strong>Note:</strong> ${info}`;
+        expBox.style.display = 'block';
+        document.getElementById('next-btn').classList.remove('hidden');
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < quizData.length) {
+            showQuestion();
+        } else {
+            document.getElementById('quiz-container').innerHTML = "<h2>Quiz Completed!</h2><button onclick='location.reload()'>Load New Quiz</button>";
+        }
+    }
+</script>
+
+</body>
+</html>
