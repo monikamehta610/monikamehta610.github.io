@@ -8,36 +8,38 @@
         body { font-family: 'Inter', -apple-system, sans-serif; background: #f8fafc; display: flex; flex-direction: column; align-items: center; padding: 40px; color: #1e293b; }
         #setup-container, #quiz-container { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 650px; width: 100%; }
         
-        /* Topic Header */
-        #topic-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.2rem; color: #0f172a; display: none; }
+        /* Optional Header (e.g., Question 1) */
+        #header-text { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.2rem; color: #0f172a; display: none; }
         
-        /* The Reading Material Box */
+        /* The Reading Material (Content) */
         #content-box { 
             background: #f1f5f9; 
             padding: 1.5rem; 
             border-radius: 12px; 
             border-left: 5px solid #cbd5e1; 
-            margin-bottom: 2rem; 
+            margin-bottom: 1.5rem; 
             line-height: 1.7; 
             font-style: italic; 
             color: #475569;
             display: none; 
         }
+
+        /* The Scenario/Description text */
+        #description-text { margin-bottom: 1.5rem; line-height: 1.6; color: #334155; display: none; }
         
-        /* The Question Prompt */
-        #question-text { font-size: 1.2rem; font-weight: 700; margin-bottom: 1.5rem; color: #1e293b; }
+        /* The Question Heading (Bold text above options) */
+        #question-heading { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; color: #1e293b; display: none; }
         
         input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
-        .primary-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
-        .primary-btn:hover { background: #1d4ed8; }
+        .primary-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
         
-        .option-btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; text-align: left; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .option-btn:hover:not(:disabled) { border-color: #2563eb; background: #f8fafc; transform: translateY(-1px); }
+        .option-btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; text-align: left; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+        .option-btn:hover:not(:disabled) { border-color: #2563eb; background: #f8fafc; }
         
         .correct { background: #f0fdf4 !important; border-color: #22c55e !important; color: #166534; }
         .wrong { background: #fef2f2 !important; border-color: #ef4444 !important; color: #991b1b; }
         
-        #explanation { margin-top: 25px; padding: 1.5rem; background: #eff6ff; border-radius: 8px; border-left: 5px solid #2563eb; display: none; line-height: 1.6; }
+        #explanation { margin-top: 25px; padding: 1.5rem; background: #eff6ff; border-radius: 10px; border-left: 5px solid #2563eb; display: none; line-height: 1.6; }
         #next-btn { margin-top: 20px; background: #0f172a; color: white; border: none; padding: 12px 28px; border-radius: 8px; float: right; font-weight: 600; cursor: pointer; }
         .hidden { display: none; }
     </style>
@@ -46,15 +48,15 @@
 
 <div id="setup-container">
     <h2 style="margin-top:0">Quiz Loader</h2>
-    <p style="color: #64748b; font-size: 0.9rem;">Paste your GitHub JSON link to begin the module.</p>
-    <input type="text" id="quiz-url" placeholder="https://github.com/monikamehta610/...">
+    <input type="text" id="quiz-url" placeholder="Paste JSON URL...">
     <button class="primary-btn" onclick="initializeQuiz()">Start Quiz</button>
 </div>
 
 <div id="quiz-container" class="hidden">
-    <div id="topic-title"></div>
+    <div id="header-text"></div>
     <div id="content-box"></div>
-    <div id="question-text"></div>
+    <div id="description-text"></div>
+    <div id="question-heading"></div>
     <div id="options-bin"></div>
     <div id="explanation"></div>
     <button id="next-btn" class="hidden" onclick="handleNextClick()">Next Question →</button>
@@ -76,43 +78,40 @@
     async function initializeQuiz(providedUrl) {
         const inputUrl = providedUrl || document.getElementById('quiz-url').value.trim();
         if (!inputUrl) return;
-        
         currentUrl = formatGithubUrl(inputUrl);
         
         try {
             const response = await fetch(currentUrl);
-            if (!response.ok) throw new Error();
             quizData = await response.json();
             currentIdx = 0;
-            
             document.getElementById('setup-container').classList.add('hidden');
             document.getElementById('quiz-container').classList.remove('hidden');
             showQuestion();
-        } catch (err) {
-            alert("Error loading quiz. The file may not exist or the link is incorrect.");
-        }
+        } catch (err) { alert("Error loading quiz."); }
     }
 
     function showQuestion() {
         const q = quizData[currentIdx];
         
-        // 1. Heading (e.g., "The Pricing of Debt")
-        const titleEl = document.getElementById('topic-title');
-        const headingText = q.heading || q.title || q.question || "";
-        titleEl.innerText = headingText;
-        titleEl.style.display = headingText ? 'block' : 'none';
+        // 1. Header (Heading/Title)
+        const header = document.getElementById('header-text');
+        header.innerText = q.heading || q.title || "";
+        header.style.display = (q.heading || q.title) ? 'block' : 'none';
 
-        // 2. Reading Material / Topic Intro (The Gray Box)
+        // 2. Content (Gray Box)
         const contentBox = document.getElementById('content-box');
-        const boxData = q.content || "";
-        contentBox.innerText = boxData;
-        contentBox.style.display = boxData ? 'block' : 'none';
+        contentBox.innerText = q.content || "";
+        contentBox.style.display = q.content ? 'block' : 'none';
 
-        // 3. The Specific Question Scenario (The text below the gray box)
-        const questionTextEl = document.getElementById('question-text');
-        const scenarioData = q.description || "";
-        questionTextEl.innerText = scenarioData;
-        questionTextEl.style.display = scenarioData ? 'block' : 'none';
+        // 3. Description (Scenario Text)
+        const descText = document.getElementById('description-text');
+        descText.innerText = q.description || "";
+        descText.style.display = q.description ? 'block' : 'none';
+
+        // 4. Question (Bold Heading above options)
+        const qHeading = document.getElementById('question-heading');
+        qHeading.innerText = q.question || "";
+        qHeading.style.display = q.question ? 'block' : 'none';
         
         const bin = document.getElementById('options-bin');
         bin.innerHTML = '';
@@ -130,13 +129,10 @@
 
     function checkAnswer(btn, selected, correct, info) {
         document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-        if (selected === correct) {
-            btn.classList.add('correct');
-        } else {
+        if (selected === correct) btn.classList.add('correct');
+        else {
             btn.classList.add('wrong');
-            document.querySelectorAll('.option-btn').forEach(b => { 
-                if(b.innerText === correct) b.classList.add('correct'); 
-            });
+            document.querySelectorAll('.option-btn').forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
         }
         const expBox = document.getElementById('explanation');
         expBox.innerHTML = `<strong>Explanation:</strong><br>${info}`;
@@ -146,15 +142,11 @@
 
     function handleNextClick() {
         currentIdx++;
-        if (currentIdx < quizData.length) {
-            showQuestion();
-        } else {
-            offerNextModule();
-        }
+        if (currentIdx < quizData.length) showQuestion();
+        else offerNextModule();
     }
 
     async function offerNextModule() {
-        // Automatically increments filename: 002.json -> 003.json
         const nextUrl = currentUrl.replace(/(\d+)(?=\.json)/, (match) => {
             let nextNum = parseInt(match) + 1;
             return nextNum.toString().padStart(match.length, '0');
@@ -162,33 +154,17 @@
 
         let nextExists = false;
         try {
-            // Silently check if the next file exists
-            const response = await fetch(nextUrl, { method: 'HEAD' });
-            if (response.ok) nextExists = true;
-        } catch (err) {
-            nextExists = false;
-        }
+            const res = await fetch(nextUrl, { method: 'HEAD' });
+            if (res.ok) nextExists = true;
+        } catch (e) {}
 
         let container = document.getElementById('quiz-container');
-        
         if (nextExists) {
-            container.innerHTML = `
-                <div style='text-align:center;'>
-                    <h2 style="font-size: 2rem;">Module Complete! 🎉</h2>
-                    <p style="color: #64748b; margin-bottom: 2rem;">You've finished this module. The next one is ready.</p>
-                    <button class="primary-btn" onclick="initializeQuiz('${nextUrl}')">Start Next Module →</button>
-                    <button onclick="location.reload()" style="margin-top:15px; background:none; border:none; color:#94a3b8; cursor:pointer; display:block; width:100%;">Return to Home</button>
-                </div>`;
+            container.innerHTML = `<div style='text-align:center;'><h2>Complete! 🎉</h2><button class="primary-btn" onclick="initializeQuiz('${nextUrl}')">Next Module →</button></div>`;
         } else {
-            container.innerHTML = `
-                <div style='text-align:center;'>
-                    <h2 style="font-size: 2rem;">Section Finished! 🏆</h2>
-                    <p style="color: #64748b; margin-bottom: 2rem;">Excellent work! You've completed all current modules in this sequence.</p>
-                    <button class="primary-btn" onclick="location.reload()">Return to Home</button>
-                </div>`;
+            container.innerHTML = `<div style='text-align:center;'><h2>Section Finished! 🏆</h2><button class="primary-btn" onclick="location.reload()">Finish</button></div>`;
         }
     }
 </script>
-
 </body>
 </html>
