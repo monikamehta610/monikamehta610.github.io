@@ -1,14 +1,15 @@
 [
   {
-    "question": "Which gas do plants absorb for photosynthesis?",
-    "options": ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"],
-    "answer": "Carbon Dioxide",
-    "explanation": "Plants take in Carbon Dioxide ($CO_2$) and release Oxygen during photosynthesis."
+    "question": "Question 1: Ecosystem Dynamics",
+    "description": "In a local pond ecosystem, the population of algae increases rapidly due to fertilizer runoff.",
+    "options": ["Eutrophication", "Bioaccumulation", "Speciation", "Succession"],
+    "answer": "Eutrophication",
+    "explanation": "Eutrophication is the process where nutrient enrichment leads to excessive plant and algal growth."
   },
   {
-    "question": "What is the powerhouse of the cell?",
-    "options": ["Nucleus", "Mitochondria", "Ribosome", "Vacuole"],
-    "answer": "Mitochondria",
-    "explanation": "Mitochondria generate most of the chemical energy needed to power the cell's biochemical reactions."
+    "question": "Question 2: Basic Biology",
+    "options": ["Cell Wall", "Cell Membrane", "Cytoplasm", "Nucleus"],
+    "answer": "Cell Wall",
+    "explanation": "Animal cells do not have a cell wall; they only have a cell membrane."
   }
 ]
