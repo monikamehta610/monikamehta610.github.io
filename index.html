@@ -189,8 +189,8 @@
     <!-- Setup Screen -->
     <div id="setup-container" class="card">
         <h2 style="margin-top: 0;">Start Module</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">Enter the JSON URL for your quiz module (e.g., .../001.json)</p>
-        <input type="text" id="quiz-url" placeholder="https://.../quiz_001.json">
+        <p style="color: var(--text-muted); margin-bottom: 20px;">Enter the JSON URL or directory path for your quiz module.</p>
+        <input type="text" id="quiz-url" placeholder="https://.../quizzes/ (or 001.json)">
         <button class="btn-primary" onclick="initializeQuiz()">Load Quiz</button>
     </div>
 
@@ -233,8 +233,12 @@
     let currentUrl = "";
 
     function formatGithubUrl(url) {
-        if (url.includes("github.com") && url.includes("/blob/")) {
-            return url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
+        if (url.includes("github.com")) {
+            // Handle both files (/blob/) and directories (/tree/)
+            return url
+                .replace("github.com", "raw.githubusercontent.com")
+                .replace("/blob/", "/")
+                .replace("/tree/", "/");
         }
         return url;
     }
@@ -247,8 +251,16 @@
     }
 
     async function initializeQuiz(providedUrl) {
-        const inputUrl = providedUrl || document.getElementById('quiz-url').value.trim();
+        let inputUrl = providedUrl || document.getElementById('quiz-url').value.trim();
         if (!inputUrl) return;
+
+        // If path is a directory (doesn't end in .json), append 001.json
+        if (!inputUrl.toLowerCase().endsWith('.json')) {
+            if (!inputUrl.endsWith('/')) {
+                inputUrl += '/';
+            }
+            inputUrl += '001.json';
+        }
 
         currentUrl = formatGithubUrl(inputUrl);
         
@@ -268,7 +280,7 @@
         try {
             const response = await fetch(currentUrl);
             if (!response.ok) {
-                if (response.status === 404) throw new Error("The quiz file was not found (404). Check the URL.");
+                if (response.status === 404) throw new Error("The quiz file was not found (404). Path used: " + currentUrl);
                 throw new Error(`Failed to fetch (${response.status})`);
             }
             
@@ -290,23 +302,19 @@
         const q = quizData[currentIdx];
         if (!q) return;
 
-        // Topic Title
         const titleEl = document.getElementById('topic-title');
         const titleVal = q.title || q.heading || "";
         titleEl.innerText = titleVal;
         titleEl.style.display = titleVal ? 'block' : 'none';
 
-        // Gray Box (Information)
         const contentEl = document.getElementById('content-box');
         contentEl.innerText = q.content || "";
         contentEl.style.display = q.content ? 'block' : 'none';
 
-        // Scenario Text (Description)
         const descEl = document.getElementById('description-text');
         descEl.innerText = q.description || "";
         descEl.style.display = q.description ? 'block' : 'none';
 
-        // Bold Question Heading
         const questionEl = document.getElementById('question-text');
         questionEl.innerText = q.question || "";
         questionEl.style.display = q.question ? 'block' : 'none';
@@ -357,7 +365,6 @@
     }
 
     async function offerNextModule() {
-        // Find the number in the filename and increment it
         const nextUrl = currentUrl.replace(/(\d+)(?=\.json)/, (m) => {
             const nextNum = parseInt(m) + 1;
             return nextNum.toString().padStart(m.length, '0');
