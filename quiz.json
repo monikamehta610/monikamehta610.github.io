@@ -1,0 +1,14 @@
+[
+  {
+    "question": "Which gas do plants absorb for photosynthesis?",
+    "options": ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"],
+    "answer": "Carbon Dioxide",
+    "explanation": "Plants take in Carbon Dioxide ($CO_2$) and release Oxygen during photosynthesis."
+  },
+  {
+    "question": "What is the powerhouse of the cell?",
+    "options": ["Nucleus", "Mitochondria", "Ribosome", "Vacuole"],
+    "answer": "Mitochondria",
+    "explanation": "Mitochondria generate most of the chemical energy needed to power the cell's biochemical reactions."
+  }
+]
