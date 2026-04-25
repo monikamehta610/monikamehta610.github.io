@@ -46,6 +46,7 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
             width: 100%;
             transition: all 0.3s ease;
+            position: relative;
         }
 
         #topic-title {
@@ -154,6 +155,23 @@
 
         .hidden { display: none !important; }
 
+        /* Error Message Box */
+        #error-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+            z-index: 10;
+            border-radius: 16px;
+        }
+        .error-title { color: var(--error-red); font-weight: 800; margin-bottom: 10px; }
+        .error-body { color: var(--text-muted); margin-bottom: 20px; }
+
         .loading-spinner {
             text-align: center;
             padding: 20px;
@@ -178,6 +196,12 @@
 
     <!-- Quiz Content -->
     <div id="quiz-container" class="card hidden">
+        <div id="error-overlay" class="hidden">
+            <h3 class="error-title">Error Loading Quiz</h3>
+            <p id="error-message" class="error-body"></p>
+            <button class="btn-primary" style="max-width: 200px;" onclick="location.reload()">Try Again</button>
+        </div>
+
         <div id="quiz-flow">
             <div id="topic-title"></div>
             <div id="content-box"></div>
@@ -215,44 +239,57 @@
         return url;
     }
 
+    function showError(msg) {
+        const errorOverlay = document.getElementById('error-overlay');
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.innerText = msg;
+        errorOverlay.classList.remove('hidden');
+    }
+
     async function initializeQuiz(providedUrl) {
         const inputUrl = providedUrl || document.getElementById('quiz-url').value.trim();
         if (!inputUrl) return;
 
         currentUrl = formatGithubUrl(inputUrl);
         
-        // Show loading state
+        // UI Reset
         const setupContainer = document.getElementById('setup-container');
         const quizContainer = document.getElementById('quiz-container');
         const quizFlow = document.getElementById('quiz-flow');
         const completionScreen = document.getElementById('completion-screen');
+        const errorOverlay = document.getElementById('error-overlay');
 
         setupContainer.classList.add('hidden');
         quizContainer.classList.remove('hidden');
         quizFlow.classList.add('hidden');
         completionScreen.classList.add('hidden');
+        errorOverlay.classList.add('hidden');
 
         try {
             const response = await fetch(currentUrl);
-            if (!response.ok) throw new Error("File not found");
+            if (!response.ok) {
+                if (response.status === 404) throw new Error("The quiz file was not found (404). Check the URL.");
+                throw new Error(`Failed to fetch (${response.status})`);
+            }
             
             const data = await response.json();
             quizData = Array.isArray(data) ? data : [data];
+            
+            if (quizData.length === 0) throw new Error("Quiz file is empty.");
+            
             currentIdx = 0;
-
             quizFlow.classList.remove('hidden');
             showQuestion();
         } catch (err) { 
             console.error(err);
-            setupContainer.classList.remove('hidden');
-            quizContainer.classList.add('hidden');
-            alert("Error loading quiz: " + err.message); 
+            showError(err.message);
         }
     }
 
     function showQuestion() {
         const q = quizData[currentIdx];
-        
+        if (!q) return;
+
         // Topic Title
         const titleEl = document.getElementById('topic-title');
         const titleVal = q.title || q.heading || "";
@@ -280,13 +317,15 @@
         document.getElementById('explanation').style.display = 'none';
         document.getElementById('next-btn').classList.add('hidden');
 
-        q.options.forEach(opt => {
-            const btn = document.createElement('button');
-            btn.innerText = opt;
-            btn.className = 'option-btn';
-            btn.onclick = () => checkAnswer(btn, opt, q.answer, q.explanation);
-            bin.appendChild(btn);
-        });
+        if (q.options && Array.isArray(q.options)) {
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.innerText = opt;
+                btn.className = 'option-btn';
+                btn.onclick = () => checkAnswer(btn, opt, q.answer, q.explanation);
+                bin.appendChild(btn);
+            });
+        }
     }
 
     function checkAnswer(btn, selected, correct, info) {
@@ -303,7 +342,7 @@
         }
 
         const expBox = document.getElementById('explanation');
-        expBox.innerHTML = `<strong>Explanation</strong><p>${info}</p>`;
+        expBox.innerHTML = `<strong>Explanation</strong><p>${info || "No explanation provided."}</p>`;
         expBox.style.display = 'block';
         document.getElementById('next-btn').classList.remove('hidden');
     }
@@ -319,7 +358,6 @@
 
     async function offerNextModule() {
         // Find the number in the filename and increment it
-        // Matches sequences like 001, 01, 1 etc before .json
         const nextUrl = currentUrl.replace(/(\d+)(?=\.json)/, (m) => {
             const nextNum = parseInt(m) + 1;
             return nextNum.toString().padStart(m.length, '0');
@@ -333,7 +371,6 @@
 
         let nextExists = false;
         try { 
-            // We use standard fetch but check only the status to avoid CORS issues with HEAD
             const res = await fetch(nextUrl); 
             if (res.ok) nextExists = true; 
         } catch (e) {
