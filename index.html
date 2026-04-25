@@ -8,7 +8,7 @@
         body { font-family: 'Inter', -apple-system, sans-serif; background: #f8fafc; display: flex; flex-direction: column; align-items: center; padding: 40px; color: #1e293b; }
         #setup-container, #quiz-container { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 650px; width: 100%; }
         
-        /* The Heading/Title Section */
+        /* Topic Header */
         #topic-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.2rem; color: #0f172a; display: none; }
         
         /* The Reading Material Box */
@@ -28,7 +28,8 @@
         #question-text { font-size: 1.2rem; font-weight: 700; margin-bottom: 1.5rem; color: #1e293b; }
         
         input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
-        #start-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .primary-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+        .primary-btn:hover { background: #1d4ed8; }
         
         .option-btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; text-align: left; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .option-btn:hover:not(:disabled) { border-color: #2563eb; background: #f8fafc; transform: translateY(-1px); }
@@ -45,9 +46,9 @@
 
 <div id="setup-container">
     <h2 style="margin-top:0">Quiz Loader</h2>
-    <p style="color: #64748b; font-size: 0.9rem;">Enter the JSON URL to begin.</p>
-    <input type="text" id="quiz-url" placeholder="https://raw.githubusercontent.com/...">
-    <button id="start-btn" onclick="initializeQuiz()">Start Quiz</button>
+    <p style="color: #64748b; font-size: 0.9rem;">Paste your GitHub JSON link to begin the module.</p>
+    <input type="text" id="quiz-url" placeholder="https://github.com/monikamehta610/...">
+    <button class="primary-btn" onclick="initializeQuiz()">Start Quiz</button>
 </div>
 
 <div id="quiz-container" class="hidden">
@@ -56,13 +57,14 @@
     <div id="question-text"></div>
     <div id="options-bin"></div>
     <div id="explanation"></div>
-    <button id="next-btn" class="hidden" onclick="nextQuestion()">Next Question →</button>
+    <button id="next-btn" class="hidden" onclick="handleNextClick()">Next Question →</button>
     <div style="clear: both;"></div>
 </div>
 
 <script>
     let quizData = [];
     let currentIdx = 0;
+    let currentUrl = "";
 
     function formatGithubUrl(url) {
         if (url.includes("github.com") && url.includes("/blob/")) {
@@ -71,45 +73,42 @@
         return url;
     }
 
-    async function initializeQuiz() {
-        const rawInput = document.getElementById('quiz-url').value.trim();
-        if (!rawInput) return;
-        const finalUrl = formatGithubUrl(rawInput);
+    async function initializeQuiz(providedUrl) {
+        const inputUrl = providedUrl || document.getElementById('quiz-url').value.trim();
+        if (!inputUrl) return;
+        
+        currentUrl = formatGithubUrl(inputUrl);
         
         try {
-            const response = await fetch(finalUrl);
+            const response = await fetch(currentUrl);
+            if (!response.ok) throw new Error();
             quizData = await response.json();
+            currentIdx = 0;
+            
             document.getElementById('setup-container').classList.add('hidden');
             document.getElementById('quiz-container').classList.remove('hidden');
             showQuestion();
-        } catch (err) { alert("Error loading quiz. Check the URL."); }
+        } catch (err) {
+            alert("Error loading quiz. The file may not exist or the link is incorrect.");
+        }
     }
 
     function showQuestion() {
         const q = quizData[currentIdx];
         
-        // 1. Heading logic: checks for 'heading', then 'title', then 'topic'
+        // 1. Heading check
         const titleEl = document.getElementById('topic-title');
         const headingText = q.heading || q.title || q.topic || "";
-        
-        if (headingText) {
-            titleEl.innerText = headingText;
-            titleEl.style.display = 'block';
-        } else {
-            titleEl.style.display = 'none';
-        }
-        
-        // 2. Reading Material Section (Content/Description)
+        titleEl.innerText = headingText;
+        titleEl.style.display = headingText ? 'block' : 'none';
+
+        // 2. Reading Material check
         const contentBox = document.getElementById('content-box');
         const boxData = q.content || q.description || "";
-        if (boxData) {
-            contentBox.innerText = boxData;
-            contentBox.style.display = 'block';
-        } else {
-            contentBox.style.display = 'none';
-        }
-        
-        // 3. Question Prompt
+        contentBox.innerText = boxData;
+        contentBox.style.display = boxData ? 'block' : 'none';
+
+        // 3. Question check
         document.getElementById('question-text').innerText = q.question || "";
         
         const bin = document.getElementById('options-bin');
@@ -142,16 +141,47 @@
         document.getElementById('next-btn').classList.remove('hidden');
     }
 
-    function nextQuestion() {
+    function handleNextClick() {
         currentIdx++;
         if (currentIdx < quizData.length) {
             showQuestion();
         } else {
-            document.getElementById('quiz-container').innerHTML = `
+            offerNextModule();
+        }
+    }
+
+    async function offerNextModule() {
+        // Automatically increments filename: 002.json -> 003.json
+        const nextUrl = currentUrl.replace(/(\d+)(?=\.json)/, (match) => {
+            let nextNum = parseInt(match) + 1;
+            return nextNum.toString().padStart(match.length, '0');
+        });
+
+        let nextExists = false;
+        try {
+            // Silently check if the next file exists
+            const response = await fetch(nextUrl, { method: 'HEAD' });
+            if (response.ok) nextExists = true;
+        } catch (err) {
+            nextExists = false;
+        }
+
+        let container = document.getElementById('quiz-container');
+        
+        if (nextExists) {
+            container.innerHTML = `
                 <div style='text-align:center;'>
-                    <h2>All Set! 🎉</h2>
-                    <p>You've finished this section.</p>
-                    <button onclick='location.reload()' style='background:#2563eb; color:white; padding:12px 24px; border:none; border-radius:8px; cursor:pointer;'>Restart</button>
+                    <h2 style="font-size: 2rem;">Module Complete! 🎉</h2>
+                    <p style="color: #64748b; margin-bottom: 2rem;">You've finished this module. The next one is ready.</p>
+                    <button class="primary-btn" onclick="initializeQuiz('${nextUrl}')">Start Next Module →</button>
+                    <button onclick="location.reload()" style="margin-top:15px; background:none; border:none; color:#94a3b8; cursor:pointer; display:block; width:100%;">Return to Home</button>
+                </div>`;
+        } else {
+            container.innerHTML = `
+                <div style='text-align:center;'>
+                    <h2 style="font-size: 2rem;">Section Finished! 🏆</h2>
+                    <p style="color: #64748b; margin-bottom: 2rem;">Excellent work! You've completed all current modules in this sequence.</p>
+                    <button class="primary-btn" onclick="location.reload()">Return to Home</button>
                 </div>`;
         }
     }
