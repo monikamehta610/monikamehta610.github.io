@@ -10,10 +10,16 @@
         input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; }
         button { cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.2s; }
         #start-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 12px; font-size: 1rem; }
+        
+        /* Question Styling */
+        #question { margin-bottom: 10px; color: #1e293b; }
+        #description { margin-bottom: 20px; font-style: italic; color: #475569; background: #f8fafc; padding: 10px; border-radius: 6px; line-height: 1.5; border-left: 3px solid #cbd5e1; }
+        
         .option-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; background: #fff; text-align: left; font-size: 1rem; }
         .option-btn:hover:not(:disabled) { background: #f8fafc; border-color: #2563eb; }
         .correct { background: #dcfce7 !important; border-color: #22c55e !important; color: #166534; }
         .wrong { background: #fee2e2 !important; border-color: #ef4444 !important; color: #991b1b; }
+        
         #explanation { margin-top: 20px; padding: 15px; background: #eff6ff; border-left: 4px solid #2563eb; display: none; line-height: 1.5; }
         #next-btn { margin-top: 20px; background: #1e293b; color: white; border: none; padding: 12px 24px; float: right; }
         .hidden { display: none; }
@@ -23,15 +29,15 @@
 
 <div id="setup-container">
     <h2>Quiz Loader</h2>
-    <p style="color: #666; font-size: 0.9em;">Paste any GitHub file link (JSON) below:</p>
+    <p style="color: #666; font-size: 0.9em;">Paste GitHub JSON link:</p>
     <input type="text" id="quiz-url" placeholder="https://github.com/user/repo/blob/main/quiz.json">
     <button id="start-btn" onclick="initializeQuiz()">Start Quiz</button>
-    <p id="error-msg" style="color: #ef4444; display: none; margin-top: 15px; font-weight: bold;">⚠️ Error: Could not load data. Please check your URL or JSON format.</p>
+    <p id="error-msg" style="color: #ef4444; display: none; margin-top: 15px; font-weight: bold;">⚠️ Error loading data. Check URL/JSON.</p>
 </div>
 
 <div id="quiz-container" class="hidden">
     <h3 id="question"></h3>
-    <div id="options-bin"></div>
+    <div id="description" class="hidden"></div> <div id="options-bin"></div>
     <div id="explanation"></div>
     <button id="next-btn" class="hidden" onclick="nextQuestion()">Next Question →</button>
     <div style="clear: both;"></div>
@@ -42,10 +48,8 @@
     let currentIdx = 0;
 
     function formatGithubUrl(url) {
-        // Automatically converts standard GitHub links to Raw Data links
         if (url.includes("github.com") && url.includes("/blob/")) {
-            return url.replace("github.com", "raw.githubusercontent.com")
-                      .replace("/blob/", "/");
+            return url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
         }
         return url;
     }
@@ -53,22 +57,16 @@
     async function initializeQuiz() {
         const rawInput = document.getElementById('quiz-url').value.trim();
         const errorMsg = document.getElementById('error-msg');
-        
         if (!rawInput) return;
-        
         const finalUrl = formatGithubUrl(rawInput);
-        errorMsg.style.display = 'none';
         
         try {
             const response = await fetch(finalUrl);
-            if (!response.ok) throw new Error("Network response was not ok");
             quizData = await response.json();
-            
             document.getElementById('setup-container').classList.add('hidden');
             document.getElementById('quiz-container').classList.remove('hidden');
             showQuestion();
         } catch (err) {
-            console.error(err);
             errorMsg.style.display = 'block';
         }
     }
@@ -76,6 +74,16 @@
     function showQuestion() {
         const q = quizData[currentIdx];
         document.getElementById('question').innerText = q.question;
+        
+        // Handle Optional Description
+        const descBox = document.getElementById('description');
+        if (q.description) {
+            descBox.innerText = q.description;
+            descBox.classList.remove('hidden');
+        } else {
+            descBox.classList.add('hidden');
+        }
+
         const bin = document.getElementById('options-bin');
         bin.innerHTML = '';
         document.getElementById('explanation').style.display = 'none';
@@ -91,16 +99,13 @@
     }
 
     function checkAnswer(btn, selected, correct, info) {
-        const buttons = document.querySelectorAll('.option-btn');
-        buttons.forEach(b => b.disabled = true);
-
+        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
         if (selected === correct) {
             btn.classList.add('correct');
         } else {
             btn.classList.add('wrong');
-            buttons.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+            document.querySelectorAll('.option-btn').forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
         }
-
         const expBox = document.getElementById('explanation');
         expBox.innerHTML = `<strong>Explanation:</strong><br>${info}`;
         expBox.style.display = 'block';
