@@ -3,43 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic GitHub Quiz</title>
+    <title>Educational Quiz Portal</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 40px; }
-        #setup-container, #quiz-container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 600px; width: 100%; }
-        input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; }
-        button { cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.2s; }
-        #start-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 12px; font-size: 1rem; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #f8fafc; display: flex; flex-direction: column; align-items: center; padding: 40px; color: #1e293b; }
+        #setup-container, #quiz-container { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 650px; width: 100%; }
         
-        /* Question Styling */
-        #question { margin-bottom: 10px; color: #1e293b; }
-        #description { margin-bottom: 20px; font-style: italic; color: #475569; background: #f8fafc; padding: 10px; border-radius: 6px; line-height: 1.5; border-left: 3px solid #cbd5e1; }
+        /* Topic Header & Content Section */
+        #topic-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; color: #0f172a; }
+        #content-box { background: #f1f5f9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #cbd5e1; margin-bottom: 2rem; line-height: 1.6; font-style: italic; color: #475569; }
         
-        .option-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; background: #fff; text-align: left; font-size: 1rem; }
-        .option-btn:hover:not(:disabled) { background: #f8fafc; border-color: #2563eb; }
-        .correct { background: #dcfce7 !important; border-color: #22c55e !important; color: #166534; }
-        .wrong { background: #fee2e2 !important; border-color: #ef4444 !important; color: #991b1b; }
+        /* Question Section */
+        #question-text { font-size: 1.1rem; font-weight: 600; margin-bottom: 1.5rem; }
         
-        #explanation { margin-top: 20px; padding: 15px; background: #eff6ff; border-left: 4px solid #2563eb; display: none; line-height: 1.5; }
-        #next-btn { margin-top: 20px; background: #1e293b; color: white; border: none; padding: 12px 24px; float: right; }
+        input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e2e8f0; border-radius: 8px; }
+        #start-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 1rem; }
+        
+        /* Options Styling - Matching your screenshot */
+        .option-btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; text-align: left; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+        .option-btn:hover:not(:disabled) { border-color: #94a3b8; background: #f8fafc; }
+        
+        .correct { background: #f0fdf4 !important; border-color: #22c55e !important; color: #166534; }
+        .wrong { background: #fef2f2 !important; border-color: #ef4444 !important; color: #991b1b; }
+        
+        #explanation { margin-top: 20px; padding: 1.5rem; background: #eff6ff; border-radius: 8px; border-left: 4px solid #2563eb; display: none; line-height: 1.5; }
+        #next-btn { margin-top: 20px; background: #0f172a; color: white; border: none; padding: 12px 24px; border-radius: 8px; float: right; font-weight: 600; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div id="setup-container">
-    <h2>Quiz Loader</h2>
-    <p style="color: #666; font-size: 0.9em;">Paste GitHub JSON link:</p>
-    <input type="text" id="quiz-url" placeholder="https://github.com/user/repo/blob/main/quiz.json">
-    <button id="start-btn" onclick="initializeQuiz()">Start Quiz</button>
-    <p id="error-msg" style="color: #ef4444; display: none; margin-top: 15px; font-weight: bold;">⚠️ Error loading data. Check URL/JSON.</p>
+    <h2 style="margin-top:0">Quiz Loader</h2>
+    <input type="text" id="quiz-url" placeholder="Paste GitHub JSON link here...">
+    <button id="start-btn" onclick="initializeQuiz()">Load Quiz</button>
+    <p id="error-msg" style="color: #ef4444; display: none; margin-top: 15px;">⚠️ Failed to load. Check URL or JSON format.</p>
 </div>
 
 <div id="quiz-container" class="hidden">
-    <h3 id="question"></h3>
-    <div id="description" class="hidden"></div> <div id="options-bin"></div>
+    <div id="topic-title"></div>
+    <div id="content-box"></div>
+    <div id="question-text"></div>
+    <div id="options-bin"></div>
     <div id="explanation"></div>
-    <button id="next-btn" class="hidden" onclick="nextQuestion()">Next Question →</button>
+    <button id="next-btn" class="hidden" onclick="nextQuestion()">Next →</button>
     <div style="clear: both;"></div>
 </div>
 
@@ -56,7 +62,6 @@
 
     async function initializeQuiz() {
         const rawInput = document.getElementById('quiz-url').value.trim();
-        const errorMsg = document.getElementById('error-msg');
         if (!rawInput) return;
         const finalUrl = formatGithubUrl(rawInput);
         
@@ -67,23 +72,21 @@
             document.getElementById('quiz-container').classList.remove('hidden');
             showQuestion();
         } catch (err) {
-            errorMsg.style.display = 'block';
+            document.getElementById('error-msg').style.display = 'block';
         }
     }
 
     function showQuestion() {
         const q = quizData[currentIdx];
-        document.getElementById('question').innerText = q.question;
         
-        // Handle Optional Description
-        const descBox = document.getElementById('description');
-        if (q.description) {
-            descBox.innerText = q.description;
-            descBox.classList.remove('hidden');
-        } else {
-            descBox.classList.add('hidden');
-        }
-
+        // Populate Title and Content Block
+        document.getElementById('topic-title').innerText = q.title || "Question " + (currentIdx + 1);
+        document.getElementById('content-box').innerText = q.content || "";
+        document.getElementById('content-box').style.display = q.content ? 'block' : 'none';
+        
+        // Specific Question Prompt
+        document.getElementById('question-text').innerText = q.question || "";
+        
         const bin = document.getElementById('options-bin');
         bin.innerHTML = '';
         document.getElementById('explanation').style.display = 'none';
@@ -104,7 +107,9 @@
             btn.classList.add('correct');
         } else {
             btn.classList.add('wrong');
-            document.querySelectorAll('.option-btn').forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+            document.querySelectorAll('.option-btn').forEach(b => { 
+                if(b.innerText === correct) b.classList.add('correct'); 
+            });
         }
         const expBox = document.getElementById('explanation');
         expBox.innerHTML = `<strong>Explanation:</strong><br>${info}`;
@@ -118,9 +123,10 @@
             showQuestion();
         } else {
             document.getElementById('quiz-container').innerHTML = `
-                <h2 style='text-align:center;'>Quiz Finished! 🎉</h2>
-                <button onclick='location.reload()' style='width:100%; background:#2563eb; color:white; padding:12px; border:none; border-radius:6px;'>Try Another Quiz</button>
-            `;
+                <div style='text-align:center;'>
+                    <h2>Quiz Completed! 🎉</h2>
+                    <button onclick='location.reload()' style='background:#2563eb; color:white; padding:12px 24px; border:none; border-radius:8px; cursor:pointer;'>Load Another</button>
+                </div>`;
         }
     }
 </script>
